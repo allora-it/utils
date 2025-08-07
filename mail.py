@@ -51,30 +51,37 @@ def check_spf(domain, results):
             for error in spf_result["errors"]:
                 print_status("SPF Error", "FAIL", error)
 
-def check_dkim(domain):
+def check_dkim(domain, selectors):
     """
-    Checks for common DKIM records.
+    Checks for DKIM records using provided selectors.
     Note: A comprehensive DKIM check requires analyzing an email header.
-    This function checks for common selectors.
+    This function checks for provided selectors.
     """
     print_header("DKIM (DomainKeys Identified Mail) Check")
-    common_selectors = ["default", "google", "selector1", "selector2", "k1", "k2", "mandrill"]
-    found_dkim = False
-    for selector in common_selectors:
+    found_selectors = []
+    errors = []
+    
+    for selector in selectors:
         dkim_domain = f"{selector}._domainkey.{domain}"
         try:
             dns.resolver.resolve(dkim_domain, 'TXT')
-            print_status("DKIM Record", "PASS", f"Found a DKIM record with selector: '{selector}'")
-            found_dkim = True
+            found_selectors.append(selector)
         except dns.resolver.NXDOMAIN:
             continue
         except dns.resolver.NoAnswer:
-            print_status("DKIM Record", "WARN", f"Found DKIM record for '{selector}', but no TXT record.")
+            errors.append((selector, "Found DKIM record, but no TXT record"))
         except Exception as e:
-            print_status("DKIM Check", "FAIL", f"An error occurred with selector '{selector}': {e}")
-
-    if not found_dkim:
-        print_status("DKIM Record", "WARN", "No common DKIM records found. This is not a definitive failure, as custom selectors are common.")
+            errors.append((selector, f"Error: {e}"))
+    
+    # Report results
+    if found_selectors:
+        for selector in found_selectors:
+            print_status("DKIM Record", "PASS", f"Found a DKIM record with selector: '{selector}'")
+    else:
+        print_status("DKIM Record", "WARN", f"No DKIM records found for selectors: {', '.join(selectors)}")
+        if errors:
+            for selector, error in errors:
+                print_status("DKIM Check", "FAIL", f"Selector '{selector}': {error}")
 
 
 def check_dmarc(domain, results):
@@ -113,6 +120,10 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--domain', 
                         help='Domain to check (e.g., example.com)',
                         type=str)
+    parser.add_argument('--dkim',
+                        help='Comma-separated list of DKIM selectors to check (default: default,google)',
+                        type=str,
+                        default='default,google')
     
     args = parser.parse_args()
     
@@ -146,8 +157,11 @@ if __name__ == "__main__":
             except Exception as e:
                 domain_results['dmarc'] = {'error': str(e)}
             
+            # Parse DKIM selectors
+            dkim_selectors = [s.strip() for s in args.dkim.split(',') if s.strip()]
+            
             check_spf(domain_to_check, domain_results)
-            check_dkim(domain_to_check)
+            check_dkim(domain_to_check, dkim_selectors)
             check_dmarc(domain_to_check, domain_results)
 
         except Exception as e:

@@ -18,6 +18,13 @@ python mail.py -d example.com
 python mail.py --domain example.com
 ```
 
+Check with custom DKIM selectors:
+```bash
+python mail.py -d example.com --dkim selector1,selector2,selector3
+```
+
+The `--dkim` parameter allows you to specify custom DKIM selectors to check. By default, it checks 'default' and 'google' selectors. You can provide a comma-separated list of selectors to check for your specific domain configuration.
+
 ### Interactive Mode
 
 Run without arguments to enter the domain interactively:
