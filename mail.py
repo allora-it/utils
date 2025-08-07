@@ -5,14 +5,15 @@
 # pip install checkdmarc dnspython termcolor
 #
 # Usage:
-# python run.py <domain>
-# or
-# python run.py  (interactive mode)
+# python mail.py -d example.com
+# python mail.py --domain example.com
+# python mail.py  (interactive mode)
 
 import dns.resolver
 from termcolor import colored
 import checkdmarc
 import sys
+import argparse
 
 def print_header(text):
     """Prints a formatted header."""
@@ -105,13 +106,24 @@ def check_dmarc(domain, results):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        domain_to_check = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description='Email Security Checker - Checks SPF, DKIM, and DMARC records for a domain',
+        epilog='Example: python mail.py -d example.com'
+    )
+    parser.add_argument('-d', '--domain', 
+                        help='Domain to check (e.g., example.com)',
+                        type=str)
+    
+    args = parser.parse_args()
+    
+    if args.domain:
+        domain_to_check = args.domain
     else:
         try:
             domain_to_check = input("Enter the domain to check (e.g., google.com): ")
         except EOFError:
-            print("Usage: python run.py <domain>")
+            print("No domain provided. Use -d/--domain or enter interactively.")
+            parser.print_help()
             sys.exit(1)
     
     if domain_to_check:
